@@ -3,7 +3,7 @@ DataScienceTopics
 
 Series of iPyhon notebooks looking at various topics in data science.
 
-Notebook:
+Notebooks:
 
 01 - Boston House Prices - Nearest Neigbor
 
@@ -21,7 +21,7 @@ Notebook:
 
 08 - Common User Brands - Brand Recommendation Engine
 
-R Problem Set
+R Problem Sets:
 
 1 - Times Square Signage Data - General Data Handling
 
