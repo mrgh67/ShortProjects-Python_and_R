@@ -1,0 +1,268 @@
+---
+title: "Assignment 3"
+author: "Mark Holt"
+date: "October 17, 2014"
+output: pdf_document
+---
+
+**Question 1**
+
+Firstly conduct some rudimentary investigation of the dataset:
+```{r}
+library("car")
+#str(Chile)
+colnames(Chile)
+```
+
+*Votes by Education*
+Contingency Table
+```{r}
+table(Chile$education, Chile$vote, useNA="no")
+```
+Where P is Primary, PS is Post-Secondary, and S is Secondary.
+Where A is Abstain, N is No, U is Undecided, and Y is Yes (for and against means for and against Pinochet)
+
+
+*Votes by Education and Region*
+Contingency Table
+```{r}
+ftable(vote ~ region + education, data=Chile, useNA="no")
+```
+where C is Central, M is Metropolitan Santiago, N is North, S is South and SA is City of Santiago
+
+
+*Votes by Income Category*
+Income divided according to income quantiles.
+
+```{r}
+income.c = cut(Chile$income, c(quantile(Chile$income, 0.0, na.rm=TRUE),quantile(Chile$income, 0.25, na.rm=TRUE),quantile(Chile$income, 0.5, na.rm=TRUE),quantile(Chile$income, 0.75, na.rm=TRUE),quantile(Chile$income, 1.0, na.rm=TRUE)))
+table(income.c, Chile$vote, useNA="no")
+```
+
+*Votes by Age*
+Age divided into young, middle-aged, and old.
+
+```{r}
+Chile$age=as.integer(Chile$age)
+age.c = cut(Chile$age, c(0, 30, 60, 110), na.rm=TRUE)
+table(age.c, Chile$vote)
+```
+
+Observations:
+
+- Those who support Pinochet tend to be middle aged, middle income earners who are not well educated, living in the South of the country or the City of Santiago
+
+- Those who do not support Pinochet tend to have had a Secondary education. They are relatively well distributed regionally, except in the Metropolitan Santiago area.They are also tending to be in the higher income brackets, but evenly distributed in the top 75% of income.
+
+- There are relatively few abstaining voters. Abstaining voters tend to be young.
+
+- High income earners tend not to be undecided. Undecided voters also tend to be young.
+
+**Question 2**
+
+*Regional differences in average SAT Verbal Scores*
+
+```{r}
+satvModel = lm(SATV ~ region, data=States)
+satAOV= aov(satvModel)
+summary(satAOV)
+```
+
+Conclusion: With a p value < 0.001 the Null hypothesis is rejected in favor of the Alternative hypothesis that there are regional differences in average SAT Verbal scores.
+
+Obtaining more information using Tukey's post-hoc test:
+
+```{r}
+TukeyHSD(satAOV)
+```
+
+Test for sample normality:
+
+The Shapiro-Wilk test
+```{r}
+shapiro.test(States$SATV)
+```
+Conclusion: With a p value > 0.05 the Null hypothesis would not be rejected in favor of the Alternative hypothesis that SATV is not normally distributed.
+
+A Quantile-Quantile plot
+```{r}
+qqnorm(States$SATV)
+```
+
+Comment: To my eyes this looks pretty good as a representation of a normally distributed variable!
+
+Test for homogeneity of variance using Levene's Test:
+```{r}
+leveneTest(SATV ~ region, data=States)
+```
+Conclusion: With a p value of 0.54 the Null hypothesis would not be rejected, and one could conclude that the variances are homogeneous.
+
+Overall the use of ANOVA in this instance appears justified.
+
+*Regional differences in composite SAT Scores*
+
+```{r}
+States$CompSAT = States$SATV + States$SATM
+satcModel = lm(CompSAT ~ region, data=States)
+satC_AOV = aov(satcModel)
+summary(satC_AOV)
+```
+
+Conclusion: With a p value < 0.001 the Null hypothesis is rejected in favor of the Alternative hypothesis that there are regional differences in average composite SAT scores.
+
+Question: I suspect there is an obvious and easier way to do this without having to create a new column in the data frame??
+
+Check assumption of normality with Shapiro-Wilk and a QQ plot
+```{r}
+shapiro.test(States$CompSAT)
+qqnorm(States$CompSAT)
+```
+
+The assumption of normality for the composite SAT scores appears reasonable.
+
+```{r}
+leveneTest(CompSAT ~ region, data=States)
+```
+
+The assumption of homogeneity of variance also appears reasonable for the composite SAT scores.
+
+*SAT Verbal and Math scores are less a function of regional breakdown and have more to do with education spending*
+
+SAT Verbal approximates a normal distribtion.
+
+Create a new variable called "EdSpend", which combines "dollars" and "pay" (combine the state spending on public education, in $1000s per student, and the average teacher's salary, in $1000) to represent the combined spend.
+
+Check for normality for the other variables - SATM and EdSpend
+
+```{r}
+States$EdSpend = States$dollars + States$pay
+shapiro.test(States$SATM)
+qqnorm(States$SATM)
+shapiro.test(States$EdSpend)
+qqnorm(States$EdSpend)
+```
+
+A violation of normality (at a 5% significance level) can be observed with the new variable EdSpend (p=0.04).
+
+As there are two response variables use MANOVA.
+
+```{r}
+mModel = lm(cbind(SATV, SATM) ~ region + EdSpend, data=States)
+mMan = manova(mModel)
+summary(mMan)
+```
+
+This clearly indicates that region is the dominant variable in the functional relationship.
+As an exercise compare the use of two individual ANOVA models for each of the response variables.
+
+```{r}
+mathModel = lm(SATM ~ region + EdSpend, data=States)
+verbalModel = lm(SATV ~ region + EdSpend, data=States)
+maov = aov(mathModel)
+vaov = aov(verbalModel)
+summary(maov)
+summary(vaov)
+```
+
+Based on the above two models and their ANOVA test the conclusion is that SAT Math and SAT Verbal scores are more a function of region than education spending.
+
+
+Check the homogeneity of variance. Levene's Test reported an error indicating it was not an appropriate test with quantitative explanatory variables. Bartlett's Test also threw an error.
+```{r}
+#bartlett.test(SATM ~ region + EdSpend, data=States)
+#bartlett.test(SATV ~ region + EdSpend, data=States)
+```
+
+**Question 3**
+
+Firstly, remove any NAs within the dataset, and then visualize the data using a scatterplot.
+
+```{r}
+Freedman1 = na.omit(Freedman)
+scatterplotMatrix(Freedman1[,1:4], smoother=FALSE)
+```
+
+"Crime" looks like is has a normal distribution, but "population", "nonwhite", and "density" do not look normally distributed in the scatter plot. However, there might be some outliers and leverage points which are skewing the distributions.
+
+*What are the most influential variables in predicting the crime rate?*
+
+Build a model for crime being depdendent upon the demographic variables population, nonwhite, and density.
+
+```{r}
+modelA = lm(formula = crime ~ ., data=Freedman1)
+summary(modelA)
+```
+This indicates that the most influential variable in predicting crime is the Metropolitan Area population, followed by the percentage of non-white residents within the Metropolitan Area. Density, as measured by population per square mile is not significantly influential in predicting crime (p >> 0.05).
+
+*Are there variables to be removed?*
+
+Density is a candidate for removal as a variable.
+Estimate VIF first.
+
+```{r}
+vif(modelA)
+```
+
+All of the VIF's are low, indicating low collinearity between the variables. 
+
+Remove the density and rebuild the model. Then compare the two models.
+
+```{r}
+modelB = update(modelA, crime ~ . - density, data=Freedman1)
+summary(modelB)
+anova(modelA, modelB)
+```
+
+There is good evidence here that the models are as good as each other and as such dropping density as a variable is justified. When the variable was dropped the adjusted R squared went up very slightly, the residual standard error remained close. The anova indicates that the models are the same with a p value of 0.75. (Do not reject the Null hypothesisa at a significance level of 5%).
+
+Also measure the AIC and BIC for the two models.
+
+```{r}
+AIC(modelA, modelB)
+BIC(modelA, modelB)
+```
+
+*Outliers and Leverage Points*
+
+Look at a qqPlot of the model.
+
+```{r}
+qqPlot(modelB)
+influencePlot(modelB)
+```
+
+All the points for model B lie within the model. 
+
+Comment: Not really sure I understand this influence plot. What constitutes and outlier and a leverage point in an influence plot?
+
+*Dependent Variable Normality and Uncorrelated Error Terms*
+
+Plot a boxCox for modelB
+```{r}
+boxCox(modelB)
+```
+
+The peak of the log-Liklihood is close to 1, indicating that the dependent variable does not need transformation, and is close to normal.
+
+Plot the residuals
+```{r}
+plot(modelB$residuals)
+mean(modelB$residuals)
+acf(modelB$residuals)
+```
+
+The plot of the residuals looks like a "shotgun" appearance. The residual mean is close to 0. The auto-correlation of the residuals indicates no significant correlations.
+
+Conclusion is that the model does meet the assumptions of both dependent variable normality and uncorrelated error terms.
+
+
+Just from casual observation of the variables it occured to me that a better model might be had by using the log of population and log of nonwhite.
+
+```{r}
+modelC = lm(formula = crime ~ log(population) + log(nonwhite), data=Freedman1)
+summary(modelC)
+anova(modelB, modelC)
+AIC(modelB, modelC)
+influencePlot(modelC)
+```
+}

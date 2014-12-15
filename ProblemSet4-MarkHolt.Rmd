@@ -1,0 +1,478 @@
+---
+title: "Assignment4-MarkHolt"
+author: "Mark Holt"
+date: "October 22, 2014"
+output: pdf_document
+---
+
+**Question 1**
+
+Plots to compare and contrast span and degree
+
+```{r, echo=FALSE}
+library("gamclass")
+
+
+loti1 = na.omit(loti)
+attach(loti1)
+
+numberOfSpans = 5
+numberOfDegrees = 3
+numGraphs = numberOfSpans * numberOfDegrees
+
+xrange = range(Year)
+yrange = range(DJF)
+colors = rainbow(numGraphs)
+linetype = c(1:numGraphs)
+plotchar = seq(18, 18+numGraphs, 1)
+
+mySpan = 0.2
+myDegree = 1
+
+#dev.new(width=4,height=4)
+par(mfrow=c(2,2), mar=c(3,3,3,3))
+plot(Year, DJF, xlab="Year", type="p", ylab="Dec-Jan-Feb")
+
+modelA = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelA$fitted[order(modelA$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="red", pch=1)
+
+myDegree = 2
+modelB = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelB$fitted[order(modelB$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="blue", pch=2)
+
+title("Local Polynomial Regression, span=0.2")
+legend(xrange[1], yrange[2], 1:myDegree, cex=0.8, col=c("red", "blue"), lty=1, title="Degree")
+
+mySpan = 0.4
+myDegree = 1
+
+plot(Year, DJF, xlab="Year", type="p", ylab="Dec-Jan-Feb")
+
+modelA = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelA$fitted[order(modelA$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="red", pch=1)
+
+myDegree = 2
+modelB = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelB$fitted[order(modelB$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="blue", pch=2)
+
+title("Local Polynomial Regression, span=0.4.")
+legend(xrange[1], yrange[2], 1:myDegree, cex=0.8, col=c("red", "blue"), lty=1, title="Degree")
+
+mySpan = 0.6
+myDegree = 1
+
+plot(Year, DJF, xlab="Year", type="p", ylab="Dec-Jan-Feb")
+
+modelA = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelA$fitted[order(modelA$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="red", pch=1)
+
+myDegree = 2
+modelB = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelB$fitted[order(modelB$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="blue", pch=2)
+
+title("Local Polynomial Regression, span=0.6.")
+legend(xrange[1], yrange[2], 1:myDegree, cex=0.8, col=c("red", "blue"), lty=1, title="Degree")
+
+mySpan = 0.8
+myDegree = 1
+
+plot(Year, DJF, xlab="Year", type="p", ylab="Dec-Jan-Feb")
+
+modelA = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelA$fitted[order(modelA$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="red", pch=1)
+
+myDegree = 2
+modelB = loess(Year ~ DJF, span=mySpan, degree=myDegree)
+lodd =modelB$fitted[order(modelB$fitted)]
+dj =DJF[order(DJF)]
+lines(lodd, dj, type="l", lwd=1, lty=1, col="blue", pch=2)
+
+title("Local Polynomial Regression, span=0.8.")
+legend(xrange[1], yrange[2], 1:myDegree, cex=0.8, col=c("red", "blue"), lty=1, title="Degree")
+detach(loti1)
+```
+
+To choose the "best" model I will define "best" as having the lowest Mean Squared Error on an unseen test set.
+So split the data into 2 sets, train and test. Assign rows to the train and test sets randomly.
+
+
+*DEC-JAN-FEB (DJF)*
+
+```{r}
+calcMSE = function(x,y) {
+  squarederror = (y-x)*(y-x)
+  return(mean(squarederror, na.rm = TRUE))
+}
+
+set.seed(45)
+
+myR = sample(1:2, 130, replace=TRUE)
+myR[1]=myR[130]
+#make sure the first and last rows are in the training set - as we are dealing with years! 
+#Otherwise the test set will contain years outside of the training set, which implies we
+#are asking our model to extroplate, rather than just interpolate.
+
+train = loti1[myR==2,]
+test = loti1[myR==1 ,]
+
+#trt=nrow(train)
+#tst=nrow(test)
+#trtb=trt-5
+#tstb=tst-5
+#train[1:5,]
+#train[trtb:trt,]
+#test[1:5,]
+#test[tstb:tst,]
+
+trainS = train$DJF
+testS = test$DJF
+
+getMSE = function(trainS, testS, train, test) {
+  for (dd in c(1,2)) {
+    for (sp in seq(0.2:1.0, by=0.1)) {
+      model = loess(train$Year ~ trainS, span=sp, degree=dd)
+      p=predict(model, newdata=testS)
+      nmse = calcMSE(p, test$Year)
+      cat("degree = ", dd, " span =", sp, "mse = ", nmse, "\n")
+    }
+  }
+  return()
+}
+
+getMSE(trainS, testS, train, test)
+
+producePlot = function(train, trainS, test, testS, sp, deg) {
+  model = loess(train$Year ~ trainS, span=sp, degree=deg)
+  ggh=predict(model, newdata=testS)
+  plot(test$Year, testS, xlab="Year", type="p", ylab="Season")
+  gghOrder = ggh[order(ggh)]
+  theOrder = testS[order(testS)]
+  lines(gghOrder, theOrder, type="l", lwd=1, lty=1, col="red", pch=2)
+  title("Best Predictor Test Set")
+}
+
+producePlot(train, trainS, test, testS, 0.7, 1)
+```
+For DJF - the "best" predictor had parameters span = 0.7, degree = 1.
+
+
+
+*MAR-APR-MAY (MAM)*
+
+```{r}
+set.seed(17)
+myR = sample(1:2, 130, replace=TRUE)
+myR[1]=myR[130]
+train = loti1[myR==2,]
+test = loti1[myR==1 ,]
+trainS = train$MAM
+testS = test$MAM
+getMSE(trainS, testS, train, test)
+producePlot(train, trainS, test, testS, 1, 1)
+```
+For MAM - the "best" predictor had parameters span = 1, degree = 1
+
+
+
+*JUN-JUL-AUG (JJA)*
+
+```{r}
+set.seed(2)
+myR = sample(1:2, 130, replace=TRUE)
+myR[1]=myR[130]
+train = loti1[myR==1,]
+test = loti1[myR==2 ,]
+trainS = train$JJA
+testS = test$JJA
+getMSE(trainS, testS, train, test)
+producePlot(train, trainS, test, testS, 1, 1)
+```
+
+For JJA - the "best" predictor had parameters span = 1, degree = 1
+
+
+
+*SEP-OCT-NOV (SON)*
+
+```{r}
+set.seed(87)
+myR = sample(1:2, 130, replace=TRUE)
+myR[1]
+myR[130]
+train = loti1[myR==1,]
+test = loti1[myR==2 ,]
+trainS = train$SON
+testS = test$SON
+getMSE(trainS, testS, train, test)
+producePlot(train, trainS, test, testS, 0.9, 2)
+```
+
+For JJA - the "best" predictor had parameters span = 0.9, degree = 2
+
+
+**Question 2.**
+
+Get an overview of the dataset.
+
+```{r}
+#colnames(fars2008)
+#str(fars2008)
+#head(fars2008$state)
+#length(fars2008$state)
+```
+
+*Replace the state codes with the state names.* 
+Firstly convert the column to type character. Create a new data frame in the process.
+
+```{r}
+df = fars2008
+df$state = as.character(df$state)
+#str(df)
+```
+
+Now replace all the state codes with their respective names. Could have used gsub here.
+
+```{r}
+library("plyr")
+df$state = mapvalues(df$state, "1", "Alabama")
+df$state = mapvalues(df$state, "2", "Alaska")
+#df$state = mapvalues(df$state, "3", "")
+df$state = mapvalues(df$state, "4", "Arizona")
+df$state = mapvalues(df$state, "5", "Arkansas")
+df$state = mapvalues(df$state, "6", "California")
+#df$state = mapvalues(df$state, "7", "")
+df$state = mapvalues(df$state, "8", "Colorado")
+df$state = mapvalues(df$state, "9", "Connecticut")
+df$state = mapvalues(df$state, "10", "Delaware")
+df$state = mapvalues(df$state, "11", "District_of_Columbia")
+df$state = mapvalues(df$state, "12", "Florida")
+df$state = mapvalues(df$state, "13", "Georgia")
+#df$state = mapvalues(df$state, "14", "")
+df$state = mapvalues(df$state, "15", "Hawaii")
+df$state = mapvalues(df$state, "16", "Idaho")
+df$state = mapvalues(df$state, "17", "Illinois")
+df$state = mapvalues(df$state, "18", "Indiana")
+df$state = mapvalues(df$state, "19", "Iowa")
+df$state = mapvalues(df$state, "20", "Kansas")
+df$state = mapvalues(df$state, "21", "Kentucky")
+df$state = mapvalues(df$state, "22", "Louisiana")
+df$state = mapvalues(df$state, "23", "Maine")
+df$state = mapvalues(df$state, "24", "Maryland")
+df$state = mapvalues(df$state, "25", "Massachussetts")
+df$state = mapvalues(df$state, "26", "Michigan")
+df$state = mapvalues(df$state, "27", "Minnesota")
+df$state = mapvalues(df$state, "28", "Mississippi")
+df$state = mapvalues(df$state, "29", "Missouri")
+df$state = mapvalues(df$state, "30", "Montana")
+df$state = mapvalues(df$state, "31", "Nebraska")
+df$state = mapvalues(df$state, "32", "Nevada")
+df$state = mapvalues(df$state, "33", "New_Hampshire")
+df$state = mapvalues(df$state, "34", "New_Jersey")
+df$state = mapvalues(df$state, "35", "New_Mexico")
+df$state = mapvalues(df$state, "36", "New_York")
+df$state = mapvalues(df$state, "37", "North_Carolina")
+df$state = mapvalues(df$state, "38", "North_Dakota")
+df$state = mapvalues(df$state, "39", "Ohio")
+df$state = mapvalues(df$state, "40", "Oklahoma")
+df$state = mapvalues(df$state, "41", "Oregon")
+df$state = mapvalues(df$state, "42", "Pennsylvania")
+df$state = mapvalues(df$state, "43", "Puerto_Rico")
+df$state = mapvalues(df$state, "44", "Rhode_Island")
+df$state = mapvalues(df$state, "45", "South_Carolina")
+df$state = mapvalues(df$state, "46", "South_Dakota")
+df$state = mapvalues(df$state, "47", "Tennessee")
+df$state = mapvalues(df$state, "48", "Texas")
+df$state = mapvalues(df$state, "49", "Utah")
+df$state = mapvalues(df$state, "50", "Vermont")
+df$state = mapvalues(df$state, "51", "Virginia")
+df$state = mapvalues(df$state, "52", "Virgin_Islands")
+df$state = mapvalues(df$state, "53", "Washington")
+df$state = mapvalues(df$state, "54", "West_Vriginia")
+df$state = mapvalues(df$state, "55", "Wisconsin")
+df$state = mapvalues(df$state, "56", "Wyoming")
+
+#str(df)
+#colnames(df)
+```
+
+*Table summary of crash incidents by state.*
+
+There is a column called "casenum", which appears to identify an incident. There may be multiple rows for each casenum. Therefore, to get the number of incidents need to sum unique casenums for each state. 
+
+```{r}
+ddply(.data=df, .variables='state', .fun=function(x) { length(unique(x$casenum)) })
+```
+
+*Which states recorded car pileups in the double digits in 2008?*
+
+I will define a "pileup" as any crash involving more than a single car. The column "vnum" uniquely represents a vehicle, i.e. each vehicle is assigned a number within a single case. The rows for each casenum, however, are inidcative of people, not vehicles. So a single casenumber may have multiple rows for a single vehicle because that vehicle contained more than a single person. Nonetheless the maximum vnum indicates the maximum number of vehicles involved in an accident.
+
+Multiple cars maybe involved in an accident but where they do NOT impact each other, e.g. in the avoidance of hitting a pedestrian. So therefore, to be entirely accurate need to check "inimpact" for codes indicating actual impact points. 
+
+Included 2 variables to group by, because there is a need to look within each casenum for an impact code, which is a code haveing values not '00' and not '99'.
+
+```{r}
+tts = df[df$inimpact %in% c(1:14),]
+ttst = ddply(.data=tts, .variables='state', .fun=function(x) { return(max(x$vnum)) })
+ttst[ttst$V1>9,]
+```
+
+*Which 3 makes were involved in the most accidents.*
+
+```{r}
+tts = ddply(.data=df, .variables="make", .fun = function(x) { return(length(unique(x$casenum))) })
+ttso = order(tts$V1, decreasing=TRUE)
+tts[ttso,][1:3,]
+```
+
+*Which 3 makes recorded the lowest median severity of injuries.*
+First eliminate records where injury is 5, 6, or 9 (injured, severity unknown, died prior to accident, unknown)
+
+```{r}
+tts = df[df$injury %in% c(0:4),]
+ttst = ddply(.data=tts, .variables="make", .fun = function(x) { return(median(x$injury)) })
+ttso = order(ttst$V1, decreasing=FALSE)
+ttst[ttso,][1:3,]
+```
+
+*The effect of seatbelts and airbags on injuries.*
+
+*Airbags:*
+Only interested in injuries of severity 0 to 4 inclusive.
+```{r}
+tts = df[df$injury %in% c(0:4),]
+```
+
+Get the median injury for all airbag entries.
+```{r}
+ttst = ddply(.data=tts, .variables="airbag", .fun = function(x) { return(median(x$injury))}) 
+```
+
+Filter these results into 2 groups - the type of airbag, and no airbag
+```{r}
+ttst2 = ttst[ttst$airbag %in% c(1, 2, 7, 8, 9),]
+ttst2
+ttst3 = ttst[ttst$airbag %in% c(20, 28, 29, 30, 31, 32),]
+ttst3
+```
+
+Out of curiosity take the column-wise median of the medians to compare having an airbag and not having an airbag.
+```{r}
+ttst4 = colwise(.fun = median, .cols = 2)(ttst2)
+ttst4
+ttst5 = colwise(.fun = median, .cols = 2)(ttst3)
+ttst5
+```
+Intuitively this doesn't seem correct - implying that having an airbag is associated with a higher injury score.
+
+*Seatbelts:*
+Again only interested in injuries of severity - to 4 inclusive
+```{r}
+tts = df[df$injury %in% c(0:4),]
+```
+
+Get the median injury for the variable "restraint"
+
+```{r}
+ttst = ddply(.data=tts, .variables="restraint", .fun = function(x) { return(median(x$injury))})
+ttst
+```
+
+Restraint codes 1, 2 and 3 reflect some kind of seatbelt being worn. No restraint are codes 0, 13 (although 0 is a little ambiguous as it can also indicate not a motor vehicle occupant)
+
+```{r}
+ttst2 = ttst[ttst$restraint %in% c(1,2,3),]
+ttst2
+ttst3 = ttst[ttst$restraint %in% c(0,13),]
+ttst3
+```
+
+Wearing a seatbelt does appear to reduce median injury.
+
+```{r}
+ttst4 = colwise(.fun = median, .cols = 2)(ttst2)
+ttst4
+ttst5 = colwise(.fun = median, .cols = 2)(ttst3)
+ttst5
+```
+
+*Age/Gender combinations most frequently in the driver's seat.*
+
+Discretize the age by standard quantiles.
+Improve readabiity by replacing the sex coding with "male", "female", and "unknown".
+Filter to ensure only the driver is included in the results.
+As before use the number of unique case numbers to indicate the number of actual incidents.
+
+```{r}
+gv = quantile(df$age, c(0, 0.25, 0.50, 0.75, 1.0))
+labels = c("Young", "Middle Aged", "Mature", "Old")
+df$NewAge = cut(df$age, breaks = gv, labels = labels, include.lowest = TRUE)
+df$sex = mapvalues(df$sex, "1", "Male")
+df$sex = mapvalues(df$sex, "2", "Female")
+df$sex = mapvalues(df$sex, "9", "Unknown")
+df2 = df[df$ptype == 1,]
+ddply(.data=df2, .variables=c("sex"), .fun = function(x){ return(length(unique(x$casenum))) })
+ddply(.data=df2, .variables=c("NewAge"), .fun = function(x) { return(length(unique(x$casenum))) })
+ddply(.data=df2, .variables=c("sex", "NewAge"), .fun = function(x){ return(length(unique(x$casenum))) })
+```
+
+
+**Question 3.**
+
+*New York Times article search.*
+
+It would be cool to see how the New York Times reported physics around the time that Albert Einstein published his seminal papers.
+So a general search term for "Physics" with a search narrowing term where "Einstein" appears in the headlines.
+The function "fromURL" decodes the raw JSON and prints out various parameters.
+
+```{r}
+library("RCurl")
+library("RJSONIO")
+
+myNYTkey = "42424e7481fc95397d6758f524a70ef4:15:70046690"
+
+url = paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=Physics&fq=headline:('Einstein')&begin_date=19150101&end_date=19301230&api-key=", myNYTkey)
+print(url)
+web = getURL(url)
+raw=fromJSON(web)
+
+fromURL = function(raw) {
+  ldocs = length(raw$response$docs)
+  if(ldocs > 0) {
+    for(i in 1:ldocs) {
+      cat(i,": \n")
+      cat("Headline\t",raw$response$docs[[i]]$headline,"\n")
+      cat("web URL:\t",raw$response$docs[[i]]$web_url,"\n")
+      cat("Snippet:\t",raw$response$docs[[i]]$snippet,"\n")
+      cat("Lead Paragraph:\t",raw$response$docs[[i]]$lead_paragraph,"\n")
+      #cat("length of keywords is ", length(raw$response$docs[[i]]$keywords), "\n")
+      ll = length(raw$response$docs[[i]]$keywords)
+      if(ll>0){
+        cat("Keywords: ")
+        for(j in 1:length(raw$response$docs[[i]]$keywords)) {
+          cat("\t\t", raw$response$docs[[i]]$keywords[[j]], "  ")
+        }
+      }
+      cat("Abstract:\t",raw$response$docs[[i]]$abstract,"\n")
+      cat("Published\t", raw$response$doc[[i]]$pub_date,"\n")
+      cat("\n")
+    }
+  }
+}
+
+fromURL(raw)
+```
